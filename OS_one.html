@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BlockBlast: Operating System</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #222;
+            color: white;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .game-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 1000px;
+            gap: 20px;
+        }
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            color: #4fd1c5;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            margin-bottom: 20px;
+            font-size: 2.5rem;
+            text-align: center;
+        }
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(8, 50px);
+            grid-template-rows: repeat(8, 50px);
+            gap: 2px;
+            background-color: #555;
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+        .cell {
+            width: 50px;
+            height: 50px;
+            background-color: #333;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+        .cell.filled {
+            background-color: #4fd1c5;
+        }
+        .cell.highlight {
+            background-color: #444; /* For valid placement */
+        }
+        .cell.highlight-invalid {
+            background-color: #773333; /* For invalid placement attempt */
+        }
+        .blocks-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-left: 20px; /* Gap from game board */
+        }
+        .block-selection {
+            display: flex;
+            flex-direction: column; /* Stack blocks vertically */
+            gap: 15px; /* Space between blocks */
+            margin-top: 20px;
+            background-color: #333;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+            min-width: 150px; /* Ensure it has some width */
+        }
+        .block {
+            display: grid;
+            gap: 2px;
+            cursor: grab;
+        }
+        .block.dragging {
+            opacity: 0.7;
+            cursor: grabbing;
+        }
+        .block-cell {
+            width: 20px;
+            height: 20px;
+            background-color: #4fd1c5;
+            border-radius: 2px;
+        }
+        .empty-cell { /* For spacing within a block's grid structure */
+            width: 20px;
+            height: 20px;
+            background-color: transparent;
+        }
+        .score-panel {
+            background-color: #333;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            width: 100%;
+            min-width: 280px;
+            text-align: center;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        }
+        .score, .lives, .blocks-placed-count, .questions-answered-count {
+            font-size: 1.2rem;
+            margin-bottom: 8px;
+        }
+        .score { color: #4fd1c5; font-size: 1.4rem; }
+        .lives { color: #f56565; }
+        .blocks-placed-count { color: #d69e2e; }
+        .questions-answered-count { color: #63b3ed; }
+
+        .question-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.7); display: flex;
+            justify-content: center; align-items: center; z-index: 1000;
+            visibility: hidden; opacity: 0; transition: opacity 0.3s, visibility 0.3s;
+        }
+        .question-container {
+            background-color: #333; padding: 30px; border-radius: 10px;
+            max-width: 700px; 
+            width: 90%; box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        .question-text { font-size: 1.2rem; margin-bottom: 10px; color: #4fd1c5; }
+        .question-level-text { font-size: 0.9rem; margin-bottom: 15px; color: #aaa; }
+        .answers { display: flex; flex-direction: column; gap: 10px; }
+        .answer-btn {
+            padding: 12px 15px; background-color: #4a5568; color: white;
+            border: none; border-radius: 5px; cursor: pointer;
+            font-size: 1rem; transition: background-color 0.2s; text-align: left;
+            line-height: 1.4;
+        }
+        .answer-btn:hover { background-color: #2d3748; }
+
+        .game-controls { display: flex; justify-content: center; gap: 20px; margin-top: 20px; }
+        .control-btn {
+            padding: 10px 20px; background-color: #4fd1c5; color: #222;
+            border: none; border-radius: 5px; cursor: pointer;
+            font-weight: bold; transition: background-color 0.2s;
+        }
+        .control-btn:hover { background-color: #38b2ac; }
+
+        .game-over {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.8); display: flex;
+            justify-content: center; align-items: center; z-index: 1000;
+            visibility: hidden; opacity: 0; transition: opacity 0.3s, visibility 0.3s;
+        }
+        .game-over-container {
+            background-color: #333; padding: 30px; border-radius: 10px;
+            max-width: 400px; width: 90%; text-align: center; box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        .game-over-title { font-size: 2rem; color: #f56565; margin-bottom: 15px; }
+        .final-score { font-size: 1.5rem; margin-bottom: 15px; }
+        .game-over-message { font-size: 1.1rem; color: #ddd; margin-bottom: 25px; }
+        .restart-btn {
+            padding: 10px 25px; background-color: #4fd1c5; color: #222;
+            border: none; border-radius: 5px; cursor: pointer;
+            font-weight: bold; font-size: 1.1rem;
+        }
+        .restart-btn:hover { background-color: #38b2ac; }
+
+        .tutorial-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.8); display: flex;
+            justify-content: center; align-items: center; z-index: 1000;
+        }
+        .tutorial-container {
+            background-color: #333; padding: 30px; border-radius: 10px;
+            max-width: 600px; width: 90%; box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            text-align: left;
+        }
+        .tutorial-title { font-size: 1.8rem; color: #4fd1c5; margin-bottom: 15px; text-align: center;}
+        .tutorial-content { margin-bottom: 20px; line-height: 1.6; }
+        .tutorial-content ul { padding-left: 20px; }
+        .start-game-btn {
+            padding: 10px 25px; background-color: #4fd1c5; color: #222;
+            border: none; border-radius: 5px; cursor: pointer;
+            font-weight: bold; font-size: 1.1rem; display: block; margin: 20px auto 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>BlockBlast: Operating System</h1>
+    
+    <div class="game-container">
+        <div class="left-panel">
+            <div class="game-board" id="gameBoard"></div>
+            <div class="score-panel">
+                <div class="score" id="score">Score: 0</div>
+                <div class="lives" id="lives">Lives: 3</div>
+                <div class="blocks-placed-count" id="blocksPlaced">Blocks Placed: 0/3</div>
+                <div class="questions-answered-count" id="questionsAnswered">Questions: 0/0</div>
+            </div>
+        </div>
+        
+        <div class="blocks-container">
+            <h2>Available Blocks</h2>
+            <div class="block-selection" id="blockSelection"></div>
+            <div class="game-controls">
+                <button class="control-btn" id="restartBtn">Restart Game</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="question-modal" id="questionModal">
+        <div class="question-container">
+            <div class="question-text" id="questionText"></div>
+            <div class="question-level-text" id="questionLevelText"></div>
+            <div class="answers" id="answers"></div>
+        </div>
+    </div>
+
+    <div class="game-over" id="gameOver">
+        <div class="game-over-container">
+            <div class="game-over-title" id="gameOverTitle">Game Over!</div>
+            <div class="final-score" id="finalScore">Your final score: 0</div>
+            <div class="game-over-message" id="gameOverMessage"></div>
+            <button class="restart-btn" id="gameOverRestartBtn">Play Again</button>
+        </div>
+    </div>
+
+    <div class="tutorial-overlay" id="tutorialOverlay">
+        <div class="tutorial-container">
+            <div class="tutorial-title">Welcome to BlockBlast - Computer Architecture Edition!</div>
+            <div class="tutorial-content">
+                <p><strong>How to play:</strong></p>
+                <ul>
+                    <li>Drag the Tetris-like blocks onto the 8x8 grid.</li>
+                    <li>Complete a full row or column of 8 cells to clear it and earn points.</li>
+                    <li>After placing 3 blocks, a computer architecture question will appear.</li>
+                    <li>Answer correctly for bonus points. Incorrect answers cost a life.</li>
+                    <li>Lose 3 lives, or run out of moves/questions, and the game ends.</li>
+                    <li>The game tracks the number of unique questions answered out of 14.</li>
+                    <li>Try to get the highest score!</li>
+                </ul>
+            </div>
+            <button class="start-game-btn" id="startGameBtn">Start Game</button>
+        </div>
+    </div>
+
+<script>
+        document.addEventListener('DOMContentLoaded', function() {
+            let score = 0;
+            let lives = 3;
+            let blocksPlaced = 0; // Tracks total blocks placed to trigger question
+            let blocksPlacedCycle = 0; // Tracks blocks for the 0/3 display
+            let gameGrid = Array(8).fill(null).map(() => Array(8).fill(0));
+            let draggingBlock = null;
+            let dragStartPos = { shapeClickRow: 0, shapeClickCol: 0 };
+            const blockShapes = [
+                { shape: [[1, 1, 1, 1]], color: '#FF5252' }, { shape: [[1, 0], [1, 0], [1, 1]], color: '#FFD740' },
+                { shape: [[0, 1], [0, 1], [1, 1]], color: '#7C4DFF' }, { shape: [[1, 1], [1, 1]], color: '#FF4081' },
+                { shape: [[1, 1, 1], [0, 1, 0]], color: '#64FFDA' }, { shape: [[1, 1, 0], [0, 1, 1]], color: '#18FFFF' },
+                { shape: [[0, 1, 1], [1, 1, 0]], color: '#76FF03' }, { shape: [[1,1]], color: '#B388FF' },
+                { shape: [[1,1,1]], color: '#FF9E80' }, { shape: [[1]], color: '#EA80FC' }
+            ];
+            
+            let availableBlocks = [];
+
+            const computerArchitectureQuestions = [
+                {
+                    question: "🧠 What is a Microprocessor?",
+                    level: "Computer Architecture",
+                    answers: [
+                        "A chip that acts like the brain of the computer",
+                        "A storage device for pictures",
+                        "A tool used only in printers",
+                        "A program used to write documents"
+                    ],
+                    correctAnswer: 0 // A
+                },
+                {
+                    question: "🔄 What does the Instruction Cycle do?",
+                    level: "Computer Architecture",
+                    answers: [
+                        "Keeps track of battery usage",
+                        "Fetches and runs program instructions step by step",
+                        "Controls mouse movements",
+                        "Updates software automatically"
+                    ],
+                    correctAnswer: 1 // B
+                },
+                {
+                    question: "📋 What is the Instruction Register?",
+                    level: "Computer Architecture",
+                    answers: [
+                        "A system for managing installed programs",
+                        "A register that counts running apps",
+                        "A part of the CPU that holds the current instruction",
+                        "A device for storing user passwords"
+                    ],
+                    correctAnswer: 2 // C
+                },
+                {
+                    question: "⚠️ What are Interrupts?",
+                    level: "Computer Architecture",
+                    answers: [
+                        "Alarms that shut down the system",
+                        "Signals that tell the CPU to handle something immediately",
+                        "Shortcuts for saving files",
+                        "Warnings about low storage"
+                    ],
+                    correctAnswer: 1 // B
+                },
+                {
+                    question: "💾 What is Cache Memory used for?",
+                    level: "Computer Architecture",
+                    answers: [
+                        "Controlling the computer’s power supply",
+                        "Backing up files to a hard drive",
+                        "Temporarily storing frequently used data for quick access",
+                        "Displaying HD graphics"
+                    ],
+                    correctAnswer: 2 // C
+                },
+                {
+                    question: "💽 What is Secondary Memory?",
+                    level: "Computer Architecture",
+                    answers: [
+                        "Storage like hard drives used for long-term data",
+                        "Extra fast memory inside the CPU",
+                        "A type of battery for saving memory",
+                        "Memory that disappears when the power turns off"
+                    ],
+                    correctAnswer: 0 // A
+                },
+                {
+                    question: "🗺️ What is a Mapping Function in computers?",
+                    level: "Computer Architecture",
+                    answers: [
+                        "A way to connect memory addresses to cache locations",
+                        "A program for making flowcharts",
+                        "A tool for writing software",
+                        "A system that improves internet speed"
+                    ],
+                    correctAnswer: 0 // A
+                },
+                {
+                    question: "⚖️ What does Symmetric mean in SMP (Symmetric Multiprocessing)?",
+                    level: "Computer Architecture",
+                    answers: [
+                        "All processors share memory and have equal roles",
+                        "One processor controls all others",
+                        "Each processor runs a different operating system",
+                        "Only one processor is active at a time"
+                    ],
+                    correctAnswer: 0 // A
+                },
+                {
+                    question: "🔢 What is a Multi-Core Processor?",
+                    level: "Computer Architecture",
+                    answers: [
+                        "A device that stores multiple movies",
+                        "A chip with several processors working together",
+                        "A wireless data transmitter",
+                        "A cooling fan system"
+                    ],
+                    correctAnswer: 1 // B
+                },
+                {
+                    question: "➡️ What is the Program Counter (PC)?",
+                    level: "Computer Architecture",
+                    answers: [
+                        "A list of installed programs",
+                        "A button for starting programs",
+                        "A register that stores the next instruction address",
+                        "A tool for tracking app downloads"
+                    ],
+                    correctAnswer: 2 // C
+                },
+                {
+                    question: "01 What is a Binary Number?",
+                    level: "Computer Architecture",
+                    answers: [
+                        "A number using letters and numbers",
+                        "A number with only 0s and 1s",
+                        "A number used for images only",
+                        "A negative number"
+                    ],
+                    correctAnswer: 1 // B
+                },
+                {
+                    question: "📚 What does the Stack Pointer do?",
+                    level: "Computer Architecture",
+                    answers: [
+                        "Tracks the top of a memory stack",
+                        "Moves the mouse",
+                        "Stores bookmarks",
+                        "Increases screen brightness"
+                    ],
+                    correctAnswer: 0 // A
+                },
+                {
+                    question: "🖥️ What are User Visible Registers?",
+                    level: "Computer Architecture",
+                    answers: [
+                        "Registers programmers can use to store data and instructions",
+                        "Places where games are saved",
+                        "The history of opened programs",
+                        "The screen resolution settings"
+                    ],
+                    correctAnswer: 0 // A
+                },
+                {
+                    question: "🔀 What is Multiprogramming?",
+                    level: "Computer Architecture",
+                    answers: [
+                        "Running multiple programs on one CPU by switching between them",
+                        "Editing videos and photos at the same time",
+                        "Using two keyboards at once",
+                        "Writing in multiple coding languages"
+                    ],
+                    correctAnswer: 0 // A
+                }
+            ];
+
+
+            let askedQuestionIndices = [];
+            let currentQuestionObject = null;
+            let gameIsOver = false;
+            
+            const gameBoardElement = document.getElementById('gameBoard');
+            const blockSelectionElement = document.getElementById('blockSelection');
+            const scoreElement = document.getElementById('score');
+            const livesElement = document.getElementById('lives');
+            const blocksPlacedElement = document.getElementById('blocksPlaced');
+            const questionsAnsweredElement = document.getElementById('questionsAnswered');
+            const questionModalElement = document.getElementById('questionModal');
+            const questionTextElement = document.getElementById('questionText');
+            const questionLevelTextElement = document.getElementById('questionLevelText');
+            const answersContainerElement = document.getElementById('answers');
+            const gameOverModalElement = document.getElementById('gameOver');
+            const finalScoreElement = document.getElementById('finalScore');
+            const gameOverTitleElement = document.getElementById('gameOverTitle');
+            const gameOverMessageElement = document.getElementById('gameOverMessage');
+            const restartBtnElement = document.getElementById('restartBtn');
+            const gameOverRestartBtnElement = document.getElementById('gameOverRestartBtn');
+            const tutorialOverlayElement = document.getElementById('tutorialOverlay');
+            const startGameBtnElement = document.getElementById('startGameBtn');
+            
+            function initializeBoard() {
+                gameBoardElement.innerHTML = '';
+                for (let i = 0; i < 8; i++) {
+                    for (let j = 0; j < 8; j++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'cell';
+                        cell.dataset.row = i;
+                        cell.dataset.col = j;
+                        gameBoardElement.appendChild(cell);
+                        cell.addEventListener('dragover', allowDrop);
+                        cell.addEventListener('drop', dropBlock);
+                        cell.addEventListener('dragenter', function(e) {
+                            if (draggingBlock) {
+                                const r = parseInt(e.target.dataset.row);
+                                const c = parseInt(e.target.dataset.col);
+                                highlightValidCells(r, c, draggingBlock.shape);
+                            }
+                        });
+                        cell.addEventListener('dragleave', clearHighlight);
+                    }
+                }
+                updateBoardVisuals();
+            }
+            
+            function generateBlocks() {
+                blockSelectionElement.innerHTML = '';
+                availableBlocks = [];
+                const numBlocksToGenerate = Math.min(3, blockShapes.length);
+                for (let i = 0; i < numBlocksToGenerate; i++) {
+                    const randomIndex = Math.floor(Math.random() * blockShapes.length);
+                    const blockData = blockShapes[randomIndex];
+                    const newBlock = {
+                        shape: blockData.shape,
+                        color: blockData.color,
+                        id: `block-${Date.now()}-${i}`
+                    };
+                    availableBlocks.push(newBlock);
+                    createBlockElement(newBlock.shape, newBlock.color, newBlock.id);
+                }
+            }
+            
+            function createBlockElement(shape, color, id) {
+                const blockDiv = document.createElement('div');
+                blockDiv.className = 'block';
+                blockDiv.id = id;
+                blockDiv.draggable = true;
+                const rows = shape.length;
+                const cols = shape[0] ? shape[0].length : 0;
+                blockDiv.style.gridTemplateColumns = `repeat(${cols}, 20px)`;
+                blockDiv.style.gridTemplateRows = `repeat(${rows}, 20px)`;
+                for (let r_shape = 0; r_shape < rows; r_shape++) {
+                    for (let c_shape = 0; c_shape < cols; c_shape++) {
+                        const cell = document.createElement('div');
+                        if (shape[r_shape] && shape[r_shape][c_shape] === 1) {
+                            cell.className = 'block-cell';
+                            cell.style.backgroundColor = color;
+                        } else {
+                            cell.className = 'empty-cell';
+                        }
+                        blockDiv.appendChild(cell);
+                    }
+                }
+                blockDiv.addEventListener('dragstart', function(e) {
+                    draggingBlock = availableBlocks.find(b => b.id === id);
+                    if (!draggingBlock) return;
+                    e.dataTransfer.setData('text/plain', id);
+                    e.target.classList.add('dragging');
+                    let clickedShapeRow = 0, clickedShapeCol = 0;
+                    const blockCells = e.target.querySelectorAll('.block-cell, .empty-cell');
+                    blockCells.forEach((cell, index) => {
+                        const cellRect = cell.getBoundingClientRect();
+                        if (e.clientX >= cellRect.left && e.clientX < cellRect.right &&
+                            e.clientY >= cellRect.top && e.clientY < cellRect.bottom) {
+                            clickedShapeRow = Math.floor(index / cols);
+                            clickedShapeCol = index % cols;
+                        }
+                    });
+                    dragStartPos = { shapeClickRow: clickedShapeRow, shapeClickCol: clickedShapeCol };
+                });
+                blockDiv.addEventListener('dragend', function(e) {
+                    e.target.classList.remove('dragging');
+                    clearHighlight();
+                    draggingBlock = null;
+                });
+                blockSelectionElement.appendChild(blockDiv);
+            }
+            
+            function updateBoardVisuals() {
+                gameBoardElement.querySelectorAll('.cell').forEach(cell => {
+                    const row = parseInt(cell.dataset.row);
+                    const col = parseInt(cell.dataset.col);
+                    cell.className = 'cell'; 
+                    if (gameGrid[row][col] === 1) cell.classList.add('filled');
+                });
+            }
+
+            function highlightValidCells(boardCellRow, boardCellCol, shape) {
+                clearHighlight();
+                if (!draggingBlock) return;
+                const startRow = boardCellRow - dragStartPos.shapeClickRow;
+                const startCol = boardCellCol - dragStartPos.shapeClickCol;
+                let canPlaceCurrent = true;
+                for (let r_shape = 0; r_shape < shape.length; r_shape++) {
+                    for (let c_shape = 0; c_shape < (shape[r_shape] ? shape[r_shape].length : 0); c_shape++) {
+                        if (shape[r_shape][c_shape] === 1) {
+                            const R_board = startRow + r_shape;
+                            const C_board = startCol + c_shape;
+                            if (R_board < 0 || R_board >= 8 || C_board < 0 || C_board >= 8 || gameGrid[R_board][C_board] === 1) {
+                                canPlaceCurrent = false;
+                            }
+                        }
+                    }
+                }
+                for (let r_shape = 0; r_shape < shape.length; r_shape++) {
+                    for (let c_shape = 0; c_shape < (shape[r_shape] ? shape[r_shape].length : 0); c_shape++) {
+                        if (shape[r_shape][c_shape] === 1) {
+                            const R_board = startRow + r_shape;
+                            const C_board = startCol + c_shape;
+                            if (R_board >= 0 && R_board < 8 && C_board >= 0 && C_board < 8) {
+                                const cellElement = gameBoardElement.querySelector(`.cell[data-row="${R_board}"][data-col="${C_board}"]`);
+                                if (cellElement) {
+                                    cellElement.classList.add(canPlaceCurrent && gameGrid[R_board][C_board] === 0 ? 'highlight' : 'highlight-invalid');
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            function clearHighlight() {
+                gameBoardElement.querySelectorAll('.cell.highlight, .cell.highlight-invalid').forEach(cell => {
+                    cell.classList.remove('highlight', 'highlight-invalid');
+                });
+            }
+            
+            function allowDrop(e) { e.preventDefault(); }
+            
+            function dropBlock(e) {
+                e.preventDefault();
+                if (!draggingBlock) return;
+                const targetCell = e.target.closest('.cell');
+                if (!targetCell) { draggingBlock = null; clearHighlight(); return; }
+                const boardCellRow = parseInt(targetCell.dataset.row);
+                const boardCellCol = parseInt(targetCell.dataset.col);
+                const startRow = boardCellRow - dragStartPos.shapeClickRow;
+                const startCol = boardCellCol - dragStartPos.shapeClickCol;
+                
+                if (canPlaceBlock(draggingBlock.shape, startRow, startCol)) {
+                    placeBlockOnGrid(draggingBlock.shape, startRow, startCol);
+                    document.getElementById(draggingBlock.id)?.remove();
+                    availableBlocks = availableBlocks.filter(b => b.id !== draggingBlock.id);
+                    checkCompletedLines(); 
+                    blocksPlaced++;
+                    blocksPlacedCycle = (blocksPlacedCycle + 1) % 3;
+                    blocksPlacedElement.textContent = `Blocks Placed: ${blocksPlacedCycle}/3`;
+
+                    if (blocksPlaced % 3 === 0) {
+                         setTimeout(showQuestion, 300);
+                    } else { 
+                        checkGameEndConditions();
+                    }
+                    if (availableBlocks.length === 0 && computerArchitectureQuestions.length > askedQuestionIndices.length) {
+                        generateBlocks();
+                    }
+                } else { 
+                     checkGameEndConditions();
+                }
+                draggingBlock = null;
+                clearHighlight();
+            }
+
+            function canPlaceBlock(shape, startRow, startCol) {
+                for (let r_shape = 0; r_shape < shape.length; r_shape++) {
+                    for (let c_shape = 0; c_shape < (shape[r_shape] ? shape[r_shape].length : 0); c_shape++) {
+                        if (shape[r_shape][c_shape] === 1) {
+                            const R_board = startRow + r_shape;
+                            const C_board = startCol + c_shape;
+                            if (R_board < 0 || R_board >= 8 || C_board < 0 || C_board >= 8 || gameGrid[R_board][C_board] === 1) return false;
+                        }
+                    }
+                }
+                return true;
+            }
+
+            function canAnyBlockFromListFit(blockList) {
+                if (!blockList || blockList.length === 0) return false;
+                for (const block of blockList) {
+                    const shapeToTest = block.shape;
+                    for (let r_board_anchor = 0; r_board_anchor < 8; r_board_anchor++) {
+                        for (let c_board_anchor = 0; c_board_anchor < 8; c_board_anchor++) {
+                            for (let sr = 0; sr < shapeToTest.length; sr++) {
+                                for (let sc = 0; sc < (shapeToTest[sr] ? shapeToTest[sr].length : 0); sc++) {
+                                    if (shapeToTest[sr][sc] === 1) {
+                                        const potentialStartRow = r_board_anchor - sr;
+                                        const potentialStartCol = c_board_anchor - sc;
+                                        if (canPlaceBlock(shapeToTest, potentialStartRow, potentialStartCol)) {
+                                            return true;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                return false;
+            }
+
+            function canAnyNewShapeFit() {
+                for (const baseBlock of blockShapes) {
+                    const shapeToTest = baseBlock.shape;
+                        for (let r_board_anchor = 0; r_board_anchor < 8; r_board_anchor++) {
+                            for (let c_board_anchor = 0; c_board_anchor < 8; c_board_anchor++) {
+                                for (let sr = 0; sr < shapeToTest.length; sr++) {
+                                    for (let sc = 0; sc < (shapeToTest[sr] ? shapeToTest[sr].length : 0); sc++) {
+                                        if (shapeToTest[sr][sc] === 1) {
+                                            const potentialStartRow = r_board_anchor - sr;
+                                            const potentialStartCol = c_board_anchor - sc;
+                                            if (canPlaceBlock(shapeToTest, potentialStartRow, potentialStartCol)) {
+                                                return true;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                }
+                return false;
+            }
+
+            function placeBlockOnGrid(shape, startRow, startCol) {
+                for (let r_shape = 0; r_shape < shape.length; r_shape++) {
+                    for (let c_shape = 0; c_shape < (shape[r_shape] ? shape[r_shape].length : 0); c_shape++) {
+                        if (shape[r_shape][c_shape] === 1) {
+                                const R_board = startRow + r_shape;
+                                const C_board = startCol + c_shape;
+                                if (R_board >= 0 && R_board < 8 && C_board >= 0 && C_board < 8) gameGrid[R_board][C_board] = 1;
+                        }
+                    }
+                }
+                updateBoardVisuals();
+            }
+            
+            function checkCompletedLines() {
+                let rowsToClear = [], colsToClear = [];
+                for (let i = 0; i < 8; i++) {
+                    if (gameGrid[i].every(cell => cell === 1)) rowsToClear.push(i);
+                    let colIsFull = true;
+                    for(let k=0; k<8; k++) if(gameGrid[k][i] === 0) {colIsFull = false; break;}
+                    if(colIsFull) colsToClear.push(i);
+                }
+                if (rowsToClear.length > 0 || colsToClear.length > 0) {
+                    setTimeout(() => {
+                        clearLines(rowsToClear, colsToClear);
+                        updateScore((rowsToClear.length + colsToClear.length) * 100);
+                        if (availableBlocks.length === 0 && computerArchitectureQuestions.length > askedQuestionIndices.length) {
+                            generateBlocks();
+                        }
+                        checkGameEndConditions();
+                    }, 150); 
+                } else {
+                    checkGameEndConditions();
+                }
+            }
+
+            function clearLines(rows, cols) {
+                rows.forEach(rowIndex => gameGrid[rowIndex].fill(0));
+                cols.forEach(colIndex => gameGrid.forEach(row => row[colIndex] = 0));
+                rows.sort((a, b) => b - a); 
+                rows.forEach(clearedRowIndex => {
+                    for (let r = clearedRowIndex; r > 0; r--) gameGrid[r] = [...gameGrid[r-1]];
+                    gameGrid[0].fill(0);
+                });
+                updateBoardVisuals();
+            }
+            
+            function updateScore(points) {
+                score += points;
+                scoreElement.textContent = `Score: ${score}`;
+            }
+            
+            function showQuestion() {
+                if (gameIsOver) return;
+                if (askedQuestionIndices.length >= computerArchitectureQuestions.length) {
+                    checkGameEndConditions(); return;
+                }
+                let questionIndex;
+                do { questionIndex = Math.floor(Math.random() * computerArchitectureQuestions.length); }
+                while (askedQuestionIndices.includes(questionIndex));
+                
+                askedQuestionIndices.push(questionIndex);
+                currentQuestionObject = computerArchitectureQuestions[questionIndex];
+                questionTextElement.textContent = currentQuestionObject.question;
+                questionLevelTextElement.textContent = `Level: ${currentQuestionObject.level}`;
+                questionsAnsweredElement.textContent = `Questions: ${askedQuestionIndices.length}/${computerArchitectureQuestions.length}`;
+                answersContainerElement.innerHTML = '';
+                // Shuffle answers before displaying for more variety, if desired, or use as is
+                let displayAnswers = [...currentQuestionObject.answers];
+                // Example of shuffling if you want to randomize display order each time:
+                // displayAnswers.sort(() => 0.5 - Math.random());
+                // The correctAnswer index would need to be relative to this shuffled array if you do this.
+                // For simplicity, we'll use the pre-defined order and correctAnswer index.
+
+                currentQuestionObject.answers.forEach((answer, index) => {
+                    const button = document.createElement('button');
+                    button.className = 'answer-btn';
+                    button.textContent = answer;
+                    button.dataset.index = index; // This index must match the correctAnswer index
+                    button.addEventListener('click', handleAnswer);
+                    answersContainerElement.appendChild(button);
+                });
+                questionModalElement.style.visibility = 'visible';
+                questionModalElement.style.opacity = '1';
+            }
+
+            function handleAnswer(event) {
+                if (gameIsOver || !currentQuestionObject) return;
+                const answerIndex = parseInt(event.target.dataset.index);
+                if (answerIndex === currentQuestionObject.correctAnswer) {
+                    updateScore(50);
+                } else {
+                    lives--;
+                    livesElement.textContent = `Lives: ${lives}`;
+                }
+                hideQuestionModal();
+                currentQuestionObject = null;
+                checkGameEndConditions(); 
+            }
+
+            function checkGameEndConditions() {
+                if (gameIsOver) return;
+                if (lives <= 0) { endGame("No lives left!"); return; }
+                
+                const allQuestionsAnswered = askedQuestionIndices.length >= computerArchitectureQuestions.length;
+
+                if (allQuestionsAnswered) { 
+                    if (availableBlocks.length === 0 || !canAnyBlockFromListFit(availableBlocks)) {
+                        endGame("All questions answered and no more moves!");
+                        return;
+                    }
+                }
+                
+                if (availableBlocks.length === 0 && !canAnyNewShapeFit()) {
+                    if (allQuestionsAnswered) { 
+                         endGame("No more blocks, no new shapes can fit, and all questions answered!");
+                         return;
+                    } else if (!canAnyNewShapeFit()){ 
+                         endGame("No more moves possible on the board!");
+                         return;
+                    }
+                }
+                if (availableBlocks.length > 0 && !canAnyBlockFromListFit(availableBlocks)) {
+                    endGame("No more valid moves with available blocks!");
+                    return;
+                }
+            }
+            
+            function hideQuestionModal() {
+                questionModalElement.style.visibility = 'hidden';
+                questionModalElement.style.opacity = '0';
+            }
+            
+            function endGame(reason = "Game Over!") {
+                if (gameIsOver) return;
+                gameIsOver = true;
+                gameOverTitleElement.textContent = "Game Over!";
+                gameOverMessageElement.textContent = reason;
+                finalScoreElement.textContent = `Your final score: ${score}`;
+                gameOverModalElement.style.visibility = 'visible';
+                gameOverModalElement.style.opacity = '1';
+            }
+            
+            function resetGame() {
+                score = 0; lives = 3; blocksPlaced = 0; blocksPlacedCycle = 0;
+                gameGrid = Array(8).fill(null).map(() => Array(8).fill(0));
+                askedQuestionIndices = []; gameIsOver = false; currentQuestionObject = null;
+                scoreElement.textContent = `Score: ${score}`;
+                livesElement.textContent = `Lives: ${lives}`;
+                blocksPlacedElement.textContent = `Blocks Placed: ${blocksPlacedCycle}/3`;
+                questionsAnsweredElement.textContent = `Questions: 0/${computerArchitectureQuestions.length}`;
+                initializeBoard();
+                generateBlocks(); 
+                checkGameEndConditions(); 
+                gameOverModalElement.style.visibility = 'hidden';
+                gameOverModalElement.style.opacity = '0';
+                tutorialOverlayElement.style.display = 'none'; 
+            }
+            
+            restartBtnElement.addEventListener('click', resetGame);
+            gameOverRestartBtnElement.addEventListener('click', resetGame);
+            startGameBtnElement.addEventListener('click', function() {
+                tutorialOverlayElement.style.display = 'none';
+                resetGame();
+            });
+
+            tutorialOverlayElement.style.display = 'flex';
+            questionsAnsweredElement.textContent = `Questions: 0/${computerArchitectureQuestions.length}`;
+        });
+    </script>
+</body>
+</html>
