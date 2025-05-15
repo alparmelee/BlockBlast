@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BlockBlast - Networking Edition</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #222;
+            color: white;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .game-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 1000px;
+            gap: 20px;
+        }
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            color: #4fd1c5;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            margin-bottom: 20px;
+            font-size: 2.5rem;
+            text-align: center;
+        }
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(8, 50px);
+            grid-template-rows: repeat(8, 50px);
+            gap: 2px;
+            background-color: #555;
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+        .cell {
+            width: 50px;
+            height: 50px;
+            background-color: #333;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+        .cell.filled {
+            background-color: #4fd1c5;
+        }
+        .cell.highlight {
+            background-color: #444; /* For valid placement */
+        }
+        .cell.highlight-invalid {
+            background-color: #773333; /* For invalid placement attempt */
+        }
+        .blocks-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-left: 20px; /* Gap from game board */
+        }
+        .block-selection {
+            display: flex;
+            flex-direction: column; /* Stack blocks vertically */
+            gap: 15px; /* Space between blocks */
+            margin-top: 20px;
+            background-color: #333;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+            min-width: 150px; /* Ensure it has some width */
+        }
+        .block {
+            display: grid;
+            gap: 2px;
+            cursor: grab;
+        }
+        .block.dragging {
+            opacity: 0.7;
+            cursor: grabbing;
+        }
+        .block-cell {
+            width: 20px;
+            height: 20px;
+            background-color: #4fd1c5;
+            border-radius: 2px;
+        }
+        .empty-cell { /* For spacing within a block's grid structure */
+            width: 20px;
+            height: 20px;
+            background-color: transparent;
+        }
+        .score-panel {
+            background-color: #333;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            width: 100%;
+            min-width: 280px;
+            text-align: center;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        }
+        .score, .lives, .blocks-placed-count, .questions-answered-count {
+            font-size: 1.2rem;
+            margin-bottom: 8px;
+        }
+        .score { color: #4fd1c5; font-size: 1.4rem; }
+        .lives { color: #f56565; }
+        .blocks-placed-count { color: #d69e2e; }
+        .questions-answered-count { color: #63b3ed; }
+
+        .question-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.7); display: flex;
+            justify-content: center; align-items: center; z-index: 1000;
+            visibility: hidden; opacity: 0; transition: opacity 0.3s, visibility 0.3s;
+        }
+        .question-container {
+            background-color: #333; padding: 30px; border-radius: 10px;
+            max-width: 700px; 
+            width: 90%; box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        .question-text { font-size: 1.2rem; margin-bottom: 10px; color: #4fd1c5; }
+        .question-level-text { font-size: 0.9rem; margin-bottom: 15px; color: #aaa; }
+        .answers { display: flex; flex-direction: column; gap: 10px; }
+        .answer-btn {
+            padding: 12px 15px; background-color: #4a5568; color: white;
+            border: none; border-radius: 5px; cursor: pointer;
+            font-size: 1rem; transition: background-color 0.2s; text-align: left;
+            line-height: 1.4;
+        }
+        .answer-btn:hover { background-color: #2d3748; }
+
+        .game-controls { display: flex; justify-content: center; gap: 20px; margin-top: 20px; }
+        .control-btn {
+            padding: 10px 20px; background-color: #4fd1c5; color: #222;
+            border: none; border-radius: 5px; cursor: pointer;
+            font-weight: bold; transition: background-color 0.2s;
+        }
+        .control-btn:hover { background-color: #38b2ac; }
+
+        .game-over {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.8); display: flex;
+            justify-content: center; align-items: center; z-index: 1000;
+            visibility: hidden; opacity: 0; transition: opacity 0.3s, visibility 0.3s;
+        }
+        .game-over-container {
+            background-color: #333; padding: 30px; border-radius: 10px;
+            max-width: 400px; width: 90%; text-align: center; box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        .game-over-title { font-size: 2rem; color: #f56565; margin-bottom: 15px; }
+        .final-score { font-size: 1.5rem; margin-bottom: 15px; }
+        .game-over-message { font-size: 1.1rem; color: #ddd; margin-bottom: 25px; }
+        .restart-btn {
+            padding: 10px 25px; background-color: #4fd1c5; color: #222;
+            border: none; border-radius: 5px; cursor: pointer;
+            font-weight: bold; font-size: 1.1rem;
+        }
+        .restart-btn:hover { background-color: #38b2ac; }
+
+        .tutorial-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.8); display: flex;
+            justify-content: center; align-items: center; z-index: 1000;
+        }
+        .tutorial-container {
+            background-color: #333; padding: 30px; border-radius: 10px;
+            max-width: 600px; width: 90%; box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            text-align: left;
+        }
+        .tutorial-title { font-size: 1.8rem; color: #4fd1c5; margin-bottom: 15px; text-align: center;}
+        .tutorial-content { margin-bottom: 20px; line-height: 1.6; }
+        .tutorial-content ul { padding-left: 20px; }
+        .start-game-btn {
+            padding: 10px 25px; background-color: #4fd1c5; color: #222;
+            border: none; border-radius: 5px; cursor: pointer;
+            font-weight: bold; font-size: 1.1rem; display: block; margin: 20px auto 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>BlockBlast - Level 6: Wireless Networking</h1>
+    
+    <div class="game-container">
+        <div class="left-panel">
+            <div class="game-board" id="gameBoard"></div>
+            <div class="score-panel">
+                <div class="score" id="score">Score: 0</div>
+                <div class="lives" id="lives">Lives: 3</div>
+                <div class="blocks-placed-count" id="blocksPlaced">Blocks Placed: 0/2</div>
+                <div class="questions-answered-count" id="questionsAnswered">Questions: 0/0</div>
+            </div>
+        </div>
+        
+        <div class="blocks-container">
+            <h2>Available Blocks</h2>
+            <div class="block-selection" id="blockSelection"></div>
+            <div class="game-controls">
+                <button class="control-btn" id="restartBtn">Restart Game</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="question-modal" id="questionModal">
+        <div class="question-container">
+            <div class="question-text" id="questionText"></div>
+            <div class="question-level-text" id="questionLevelText"></div>
+            <div class="answers" id="answers"></div>
+        </div>
+    </div>
+
+    <div class="game-over" id="gameOver">
+        <div class="game-over-container">
+            <div class="game-over-title" id="gameOverTitle">Game Over!</div>
+            <div class="final-score" id="finalScore">Your final score: 0</div>
+            <div class="game-over-message" id="gameOverMessage"></div>
+            <button class="restart-btn" id="gameOverRestartBtn">Play Again</button>
+        </div>
+    </div>
+
+    <div class="tutorial-overlay" id="tutorialOverlay">
+        <div class="tutorial-container">
+            <div class="tutorial-title">Welcome to BlockBlast - Networking Edition!</div>
+            <div class="tutorial-content">
+                <p><strong>How to play:</strong></p>
+                <ul>
+                    <li>Drag the Tetris-like blocks onto the 8x8 grid.</li>
+                    <li>Complete a full row or column of 8 cells to clear it and earn points.</li>
+                    <li>After placing 2 blocks, a networking question will appear.</li>
+                    <li>Answer correctly for bonus points. Incorrect answers cost a life.</li>
+                    <li>Lose 3 lives, or run out of moves/questions, and the game ends.</li>
+                    <li>The game tracks the number of unique questions answered out of 20.</li>
+                    <li>Try to get the highest score!</li>
+                </ul>
+            </div>
+            <button class="start-game-btn" id="startGameBtn">Start Game</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            let score = 0;
+            let lives = 3;
+            let blocksPlaced = 0;
+            let gameGrid = Array(8).fill(null).map(() => Array(8).fill(0));
+            let draggingBlock = null;
+            let dragStartPos = { shapeClickRow: 0, shapeClickCol: 0 };
+            const blockShapes = [
+                { shape: [[1, 1, 1, 1]], color: '#FF5252' }, { shape: [[1, 0], [1, 0], [1, 1]], color: '#FFD740' },
+                { shape: [[0, 1], [0, 1], [1, 1]], color: '#7C4DFF' }, { shape: [[1, 1], [1, 1]], color: '#FF4081' },
+                { shape: [[1, 1, 1], [0, 1, 0]], color: '#64FFDA' }, { shape: [[1, 1, 0], [0, 1, 1]], color: '#18FFFF' },
+                { shape: [[0, 1, 1], [1, 1, 0]], color: '#76FF03' }, { shape: [[1,1]], color: '#B388FF' },
+                { shape: [[1,1,1]], color: '#FF9E80' }, { shape: [[1]], color: '#EA80FC' }
+            ];
+            
+            let availableBlocks = [];
+const networkingQuestions = [
+    {
+        question: "WLANs",
+        level: "Network Types",
+        answers: [
+            "LANs that transmit signals through the air via RF waves are known as WLANs.", // Correct (Position 0)
+            "Networks that span large geographical areas, often connecting multiple cities.",
+            "A collection of wireless standards for local area networking, like 802.11ax.",
+            "A low-power wireless technology designed for short-range communication between smart devices."
+        ],
+        correctAnswer: 0
+    },
+    {
+        question: "Channels & Narrowband",
+        level: "Technical Concepts",
+        answers: [
+            "A method of combining multiple signals onto a single transmission medium.",
+            "To allow multiple devices to share the same band, the band is subdivided into channels and further into narrowband channels.", // Correct (Position 1)
+            "The weakening of a signal as it travels through a medium.",
+            "A security process that verifies a user's identity before granting access."
+        ],
+        correctAnswer: 1
+    },
+    {
+        question: "Internet of Things (IoT)",
+        level: "Devices & Technologies",
+        answers: [
+            "A low-power wireless mesh networking standard for home automation.",
+            "A technology using electromagnetic fields to automatically identify and track tags attached to objects.",
+            "The IoT is made up of any device that can be connected to the Internet.", // Correct (Position 2)
+            "A short-range wireless communication standard that operates in the 2.4 GHz band and uses frequency hopping."
+        ],
+        correctAnswer: 2
+    },
+    {
+        question: "ZigBee",
+        level: "Protocols & Standards",
+        answers: [
+            "A smart home protocol primarily focused on signaling and control functions between devices, often using a mesh network.",
+            "A short-range wireless technology that hops between frequencies, commonly used for audio streaming and peripherals.",
+            "A collection of wireless networking standards commonly referred to as Wi-Fi.",
+            "ZigBee is a low-powered, battery-conserving wireless technology based on the 802.15.4 standard." // Correct (Position 3)
+        ],
+        correctAnswer: 3
+    },
+    {
+        question: "Z-Wave",
+        level: "Protocols & Standards",
+        answers: [
+            "Z-Wave is a smart home protocol that provides signaling and control functions between devices.", // Correct (Position 0)
+            "A low-power, battery-conserving wireless technology based on IEEE 802.15.4, often used for IoT.",
+            "A technology that uses electromagnetic fields for automatic identification and tracking of tags.",
+            "A form of RFID enabling data transfer over very short distances, often used for contactless payments."
+        ],
+        correctAnswer: 0
+    },
+    {
+        question: "Bluetooth",
+        level: "Protocols & Standards",
+        answers: [
+            "A wireless LAN technology defined by IEEE 802.11 standards.",
+            "Bluetooth operates in the 2.4–2.4835 GHz band and hops between frequencies to reduce interference.", // Correct (Position 1)
+            "A low-power, mesh networking standard for IoT devices, based on 802.15.4.",
+            "A smart home protocol focused on control and signaling, known for its proprietary nature but interoperability."
+        ],
+        correctAnswer: 1
+    },
+    {
+        question: "RFID",
+        level: "Devices & Technologies",
+        answers: [
+            "A short-range wireless communication technology derived from RFID, requiring devices to be very close.",
+            "A wireless technology used in IoT for data collection via sensors, often line-of-sight.",
+            "RFID uses electromagnetic fields to store data on a small chip in an RFID tag.", // Correct (Position 2)
+            "A popular set of wireless networking standards used for creating WLANs."
+        ],
+        correctAnswer: 2
+    },
+    {
+        question: "NFC",
+        level: "Devices & Technologies",
+        answers: [
+            "A technology using radio waves to identify and track tags over longer distances than NFC.",
+            "A low-power wireless mesh network protocol for smart home devices.",
+            "A frequency-hopping spread spectrum technology for short-range wireless connections.",
+            "NFC is a form of RFID that transfers data wirelessly over very short distances." // Correct (Position 3)
+        ],
+        correctAnswer: 3
+    },
+    {
+        question: "Infrared (IR)",
+        level: "Technical Concepts",
+        answers: [
+            "Infrared technology is used in IoT to collect data through various sensors.", // Correct (Position 0)
+            "A wireless communication method using radio frequency waves, common in Wi-Fi.",
+            "A technology that uses electromagnetic fields to identify tags without line of sight.",
+            "A short-range wireless technology using frequency hopping, typically for audio and data transfer."
+        ],
+        correctAnswer: 0
+    },
+    {
+        question: "Wi-Fi",
+        level: "Network Types",
+        answers: [
+            "A specific low-power wireless protocol designed for home automation and IoT.",
+            "Wi-Fi is a collection of wireless standards and their amendments, extensions, and corrections.", // Correct (Position 1)
+            "A short-range communication technology primarily used for pairing devices like headphones and speakers.",
+            "A technology for tracking objects using radio waves and tags."
+        ],
+        correctAnswer: 1
+    },
+    {
+        question: "MIMO & MU-MIMO",
+        level: "Technical Concepts",
+        answers: [
+            "Wireless security protocols used to encrypt data on Wi-Fi networks.",
+            "Low-power wide-area network (LPWAN) technologies for IoT devices.",
+            "MIMO and MU-MIMO access points can only be used at full capacity when client devices support them.", // Correct (Position 2)
+            "Methods for subdividing a frequency band into smaller channels for multiple device access."
+        ],
+        correctAnswer: 2
+    },
+    {
+        question: "Authentication",
+        level: "Security",
+        answers: [
+            "A wireless security standard that dynamically assigns a unique encryption key for every transmission.",
+            "The process of scrambling data so it cannot be read without a key.",
+            "A feature in access points that allows multiple inputs and outputs for improved wireless performance.",
+            "Authentication compares a client's credentials with a database to enable login." // Correct (Position 3)
+        ],
+        correctAnswer: 3
+    },
+    {
+        question: "WPA",
+        level: "Security",
+        answers: [
+            "WPA dynamically assigns every transmission its own key.", // Correct (Position 0)
+            "The process of verifying a user's identity using credentials like a username and password.",
+            "An older, less secure Wi-Fi encryption standard that used a static key.",
+            "A technology that allows data transfer over very short distances, like tapping a phone to pay."
+        ],
+        correctAnswer: 0
+    },
+    {
+        question: "Wireless Security",
+        level: "Security",
+        answers: [
+            "A technology that ensures reliable data delivery in wired networks using acknowledgements.",
+            "Wireless transmissions are susceptible to eavesdropping.", // Correct (Position 1)
+            "The method of subdividing frequency bands to prevent interference between wireless devices.",
+            "A low-power wireless protocol that inherently provides strong encryption by design for IoT."
+        ],
+        correctAnswer: 1
+    }
+];
+            let askedQuestionIndices = [];
+            let currentQuestionObject = null;
+            let gameIsOver = false;
+            
+            const gameBoardElement = document.getElementById('gameBoard');
+            const blockSelectionElement = document.getElementById('blockSelection');
+            const scoreElement = document.getElementById('score');
+            const livesElement = document.getElementById('lives');
+            const blocksPlacedElement = document.getElementById('blocksPlaced');
+            const questionsAnsweredElement = document.getElementById('questionsAnswered');
+            const questionModalElement = document.getElementById('questionModal');
+            const questionTextElement = document.getElementById('questionText');
+            const questionLevelTextElement = document.getElementById('questionLevelText');
+            const answersContainerElement = document.getElementById('answers');
+            const gameOverModalElement = document.getElementById('gameOver');
+            const finalScoreElement = document.getElementById('finalScore');
+            const gameOverTitleElement = document.getElementById('gameOverTitle');
+            const gameOverMessageElement = document.getElementById('gameOverMessage');
+            const restartBtnElement = document.getElementById('restartBtn');
+            const gameOverRestartBtnElement = document.getElementById('gameOverRestartBtn');
+            const tutorialOverlayElement = document.getElementById('tutorialOverlay');
+            const startGameBtnElement = document.getElementById('startGameBtn');
+            
+            function initializeBoard() {
+                gameBoardElement.innerHTML = '';
+                for (let i = 0; i < 8; i++) {
+                    for (let j = 0; j < 8; j++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'cell';
+                        cell.dataset.row = i;
+                        cell.dataset.col = j;
+                        gameBoardElement.appendChild(cell);
+                        cell.addEventListener('dragover', allowDrop);
+                        cell.addEventListener('drop', dropBlock);
+                        cell.addEventListener('dragenter', function(e) {
+                            if (draggingBlock) {
+                                const r = parseInt(e.target.dataset.row);
+                                const c = parseInt(e.target.dataset.col);
+                                highlightValidCells(r, c, draggingBlock.shape);
+                            }
+                        });
+                        cell.addEventListener('dragleave', clearHighlight);
+                    }
+                }
+                updateBoardVisuals();
+            }
+            
+            function generateBlocks() {
+                blockSelectionElement.innerHTML = '';
+                availableBlocks = [];
+                const numBlocksToGenerate = Math.min(3, blockShapes.length);
+                for (let i = 0; i < numBlocksToGenerate; i++) {
+                    const randomIndex = Math.floor(Math.random() * blockShapes.length);
+                    const blockData = blockShapes[randomIndex];
+                    const newBlock = {
+                        shape: blockData.shape,
+                        color: blockData.color,
+                        id: `block-${Date.now()}-${i}`
+                    };
+                    availableBlocks.push(newBlock);
+                    createBlockElement(newBlock.shape, newBlock.color, newBlock.id);
+                }
+            }
+            
+            function createBlockElement(shape, color, id) {
+                const blockDiv = document.createElement('div');
+                blockDiv.className = 'block';
+                blockDiv.id = id;
+                blockDiv.draggable = true;
+                const rows = shape.length;
+                const cols = shape[0] ? shape[0].length : 0;
+                blockDiv.style.gridTemplateColumns = `repeat(${cols}, 20px)`;
+                blockDiv.style.gridTemplateRows = `repeat(${rows}, 20px)`;
+                for (let r_shape = 0; r_shape < rows; r_shape++) {
+                    for (let c_shape = 0; c_shape < cols; c_shape++) {
+                        const cell = document.createElement('div');
+                        if (shape[r_shape] && shape[r_shape][c_shape] === 1) {
+                            cell.className = 'block-cell';
+                            cell.style.backgroundColor = color;
+                        } else {
+                            cell.className = 'empty-cell';
+                        }
+                        blockDiv.appendChild(cell);
+                    }
+                }
+                blockDiv.addEventListener('dragstart', function(e) {
+                    draggingBlock = availableBlocks.find(b => b.id === id);
+                    if (!draggingBlock) return;
+                    e.dataTransfer.setData('text/plain', id);
+                    e.target.classList.add('dragging');
+                    let clickedShapeRow = 0, clickedShapeCol = 0;
+                    const blockCells = e.target.querySelectorAll('.block-cell, .empty-cell');
+                    blockCells.forEach((cell, index) => {
+                        const cellRect = cell.getBoundingClientRect();
+                        if (e.clientX >= cellRect.left && e.clientX < cellRect.right &&
+                            e.clientY >= cellRect.top && e.clientY < cellRect.bottom) {
+                            clickedShapeRow = Math.floor(index / cols);
+                            clickedShapeCol = index % cols;
+                        }
+                    });
+                    dragStartPos = { shapeClickRow: clickedShapeRow, shapeClickCol: clickedShapeCol };
+                });
+                blockDiv.addEventListener('dragend', function(e) {
+                    e.target.classList.remove('dragging');
+                    clearHighlight();
+                    draggingBlock = null;
+                });
+                blockSelectionElement.appendChild(blockDiv);
+            }
+            
+            function updateBoardVisuals() {
+                gameBoardElement.querySelectorAll('.cell').forEach(cell => {
+                    const row = parseInt(cell.dataset.row);
+                    const col = parseInt(cell.dataset.col);
+                    cell.className = 'cell'; 
+                    if (gameGrid[row][col] === 1) cell.classList.add('filled');
+                });
+            }
+
+            function highlightValidCells(boardCellRow, boardCellCol, shape) {
+                clearHighlight();
+                if (!draggingBlock) return;
+                const startRow = boardCellRow - dragStartPos.shapeClickRow;
+                const startCol = boardCellCol - dragStartPos.shapeClickCol;
+                let canPlaceCurrent = true;
+                for (let r_shape = 0; r_shape < shape.length; r_shape++) {
+                    for (let c_shape = 0; c_shape < (shape[r_shape] ? shape[r_shape].length : 0); c_shape++) {
+                        if (shape[r_shape][c_shape] === 1) {
+                            const R_board = startRow + r_shape;
+                            const C_board = startCol + c_shape;
+                            if (R_board < 0 || R_board >= 8 || C_board < 0 || C_board >= 8 || gameGrid[R_board][C_board] === 1) {
+                                canPlaceCurrent = false;
+                            }
+                        }
+                    }
+                }
+                for (let r_shape = 0; r_shape < shape.length; r_shape++) {
+                    for (let c_shape = 0; c_shape < (shape[r_shape] ? shape[r_shape].length : 0); c_shape++) {
+                        if (shape[r_shape][c_shape] === 1) {
+                            const R_board = startRow + r_shape;
+                            const C_board = startCol + c_shape;
+                            if (R_board >= 0 && R_board < 8 && C_board >= 0 && C_board < 8) {
+                                const cellElement = gameBoardElement.querySelector(`.cell[data-row="${R_board}"][data-col="${C_board}"]`);
+                                if (cellElement) {
+                                    cellElement.classList.add(canPlaceCurrent && gameGrid[R_board][C_board] === 0 ? 'highlight' : 'highlight-invalid');
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            function clearHighlight() {
+                gameBoardElement.querySelectorAll('.cell.highlight, .cell.highlight-invalid').forEach(cell => {
+                    cell.classList.remove('highlight', 'highlight-invalid');
+                });
+            }
+            
+            function allowDrop(e) { e.preventDefault(); }
+            
+            function dropBlock(e) {
+                e.preventDefault();
+                if (!draggingBlock) return;
+                const targetCell = e.target.closest('.cell');
+                if (!targetCell) { draggingBlock = null; clearHighlight(); return; }
+                const boardCellRow = parseInt(targetCell.dataset.row);
+                const boardCellCol = parseInt(targetCell.dataset.col);
+                const startRow = boardCellRow - dragStartPos.shapeClickRow;
+                const startCol = boardCellCol - dragStartPos.shapeClickCol;
+                
+                if (canPlaceBlock(draggingBlock.shape, startRow, startCol)) {
+                    placeBlockOnGrid(draggingBlock.shape, startRow, startCol);
+                    document.getElementById(draggingBlock.id)?.remove();
+                    availableBlocks = availableBlocks.filter(b => b.id !== draggingBlock.id);
+                    checkCompletedLines(); // This might call checkGameEndConditions indirectly if lines clear
+                    blocksPlaced++;
+                    blocksPlacedElement.textContent = `Blocks Placed: ${blocksPlaced % 2}/2`;
+                    if (blocksPlaced % 2 === 0) {
+                         setTimeout(showQuestion, 300);
+                    } else { // If not showing a question, check end conditions now
+                        checkGameEndConditions();
+                    }
+                    if (availableBlocks.length === 0 && networkingQuestions.length > askedQuestionIndices.length) {
+                        generateBlocks();
+                    }
+                } else { // If block couldn't be placed, still check end conditions
+                     checkGameEndConditions();
+                }
+                draggingBlock = null;
+                clearHighlight();
+            }
+
+            function canPlaceBlock(shape, startRow, startCol) {
+                for (let r_shape = 0; r_shape < shape.length; r_shape++) {
+                    for (let c_shape = 0; c_shape < (shape[r_shape] ? shape[r_shape].length : 0); c_shape++) {
+                        if (shape[r_shape][c_shape] === 1) {
+                            const R_board = startRow + r_shape;
+                            const C_board = startCol + c_shape;
+                            if (R_board < 0 || R_board >= 8 || C_board < 0 || C_board >= 8 || gameGrid[R_board][C_board] === 1) return false;
+                        }
+                    }
+                }
+                return true;
+            }
+
+            function canAnyBlockFromListFit(blockList) {
+                if (!blockList || blockList.length === 0) return false;
+                for (const block of blockList) {
+                    const shapeToTest = block.shape;
+                    for (let r_board_anchor = 0; r_board_anchor < 8; r_board_anchor++) {
+                        for (let c_board_anchor = 0; c_board_anchor < 8; c_board_anchor++) {
+                            for (let sr = 0; sr < shapeToTest.length; sr++) {
+                                for (let sc = 0; sc < (shapeToTest[sr] ? shapeToTest[sr].length : 0); sc++) {
+                                    if (shapeToTest[sr][sc] === 1) {
+                                        const potentialStartRow = r_board_anchor - sr;
+                                        const potentialStartCol = c_board_anchor - sc;
+                                        if (canPlaceBlock(shapeToTest, potentialStartRow, potentialStartCol)) {
+                                            return true;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                return false;
+            }
+
+            function canAnyNewShapeFit() {
+                for (const baseBlock of blockShapes) {
+                    const shapeToTest = baseBlock.shape;
+                     for (let r_board_anchor = 0; r_board_anchor < 8; r_board_anchor++) {
+                        for (let c_board_anchor = 0; c_board_anchor < 8; c_board_anchor++) {
+                            for (let sr = 0; sr < shapeToTest.length; sr++) {
+                                for (let sc = 0; sc < (shapeToTest[sr] ? shapeToTest[sr].length : 0); sc++) {
+                                    if (shapeToTest[sr][sc] === 1) {
+                                        const potentialStartRow = r_board_anchor - sr;
+                                        const potentialStartCol = c_board_anchor - sc;
+                                        if (canPlaceBlock(shapeToTest, potentialStartRow, potentialStartCol)) {
+                                            return true;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                return false;
+            }
+
+            function placeBlockOnGrid(shape, startRow, startCol) {
+                for (let r_shape = 0; r_shape < shape.length; r_shape++) {
+                    for (let c_shape = 0; c_shape < (shape[r_shape] ? shape[r_shape].length : 0); c_shape++) {
+                        if (shape[r_shape][c_shape] === 1) {
+                             const R_board = startRow + r_shape;
+                             const C_board = startCol + c_shape;
+                             if (R_board >= 0 && R_board < 8 && C_board >= 0 && C_board < 8) gameGrid[R_board][C_board] = 1;
+                        }
+                    }
+                }
+                updateBoardVisuals();
+            }
+            
+            function checkCompletedLines() {
+                let rowsToClear = [], colsToClear = [];
+                for (let i = 0; i < 8; i++) {
+                    if (gameGrid[i].every(cell => cell === 1)) rowsToClear.push(i);
+                    let colIsFull = true;
+                    for(let k=0; k<8; k++) if(gameGrid[k][i] === 0) {colIsFull = false; break;}
+                    if(colIsFull) colsToClear.push(i);
+                }
+                if (rowsToClear.length > 0 || colsToClear.length > 0) {
+                    setTimeout(() => {
+                        clearLines(rowsToClear, colsToClear);
+                        updateScore((rowsToClear.length + colsToClear.length) * 100);
+                        // After clearing lines, new spaces might open up, so check game end conditions again.
+                        // Also, if new blocks are needed and can be generated, do it.
+                        if (availableBlocks.length === 0 && networkingQuestions.length > askedQuestionIndices.length) {
+                            generateBlocks();
+                        }
+                        checkGameEndConditions();
+                    }, 150); 
+                } else {
+                    // If no lines cleared, still check game end conditions as a block was just placed.
+                    checkGameEndConditions();
+                }
+            }
+
+            function clearLines(rows, cols) {
+                rows.forEach(rowIndex => gameGrid[rowIndex].fill(0));
+                cols.forEach(colIndex => gameGrid.forEach(row => row[colIndex] = 0));
+                // Row gravity
+                rows.sort((a, b) => b - a); 
+                rows.forEach(clearedRowIndex => {
+                    for (let r = clearedRowIndex; r > 0; r--) gameGrid[r] = [...gameGrid[r-1]];
+                    gameGrid[0].fill(0);
+                });
+                // Column gravity (simplified - only if a full column was cleared, shift from right to left if implementing)
+                // For this version, we'll stick to dominant row gravity which is more common.
+                updateBoardVisuals();
+            }
+            
+            function updateScore(points) {
+                score += points;
+                scoreElement.textContent = `Score: ${score}`;
+            }
+            
+            function showQuestion() {
+                if (gameIsOver) return;
+                if (askedQuestionIndices.length >= networkingQuestions.length) {
+                    checkGameEndConditions(); return;
+                }
+                let questionIndex;
+                do { questionIndex = Math.floor(Math.random() * networkingQuestions.length); }
+                while (askedQuestionIndices.includes(questionIndex));
+                askedQuestionIndices.push(questionIndex);
+                currentQuestionObject = networkingQuestions[questionIndex];
+                questionTextElement.textContent = currentQuestionObject.question;
+                questionLevelTextElement.textContent = `Level: ${currentQuestionObject.level}`;
+                questionsAnsweredElement.textContent = `Questions: ${askedQuestionIndices.length}/${networkingQuestions.length}`;
+                answersContainerElement.innerHTML = '';
+                currentQuestionObject.answers.forEach((answer, index) => {
+                    const button = document.createElement('button');
+                    button.className = 'answer-btn';
+                    button.textContent = answer;
+                    button.dataset.index = index;
+                    button.addEventListener('click', handleAnswer);
+                    answersContainerElement.appendChild(button);
+                });
+                questionModalElement.style.visibility = 'visible';
+                questionModalElement.style.opacity = '1';
+            }
+
+            function handleAnswer(event) {
+                if (gameIsOver || !currentQuestionObject) return;
+                const answerIndex = parseInt(event.target.dataset.index);
+                if (answerIndex === currentQuestionObject.correctAnswer) {
+                    updateScore(50);
+                } else {
+                    lives--;
+                    livesElement.textContent = `Lives: ${lives}`;
+                }
+                hideQuestionModal();
+                currentQuestionObject = null;
+                checkGameEndConditions(); // Critical to check after answer processed
+            }
+
+            function checkGameEndConditions() {
+                if (gameIsOver) return;
+                if (lives <= 0) { endGame("No lives left!"); return; }
+                
+                const allQuestionsAnswered = askedQuestionIndices.length >= networkingQuestions.length;
+
+                if (allQuestionsAnswered) { // If all questions are done, game ends if no more moves
+                    if (availableBlocks.length === 0 || !canAnyBlockFromListFit(availableBlocks)) {
+                        endGame("All questions answered and no more moves!");
+                        return;
+                    }
+                }
+                
+                // Standard game over conditions if questions remain or even if all answered but moves still exist
+                if (availableBlocks.length === 0 && !canAnyNewShapeFit()) {
+                    endGame("No more blocks and no new shapes can fit!");
+                    return;
+                }
+                if (availableBlocks.length > 0 && !canAnyBlockFromListFit(availableBlocks)) {
+                     endGame("No more valid moves with available blocks!");
+                     return;
+                }
+            }
+            
+            function hideQuestionModal() {
+                questionModalElement.style.visibility = 'hidden';
+                questionModalElement.style.opacity = '0';
+            }
+            
+            function endGame(reason = "Game Over!") {
+                if (gameIsOver) return;
+                gameIsOver = true;
+                gameOverTitleElement.textContent = "Game Over!";
+                gameOverMessageElement.textContent = reason;
+                finalScoreElement.textContent = `Your final score: ${score}`;
+                gameOverModalElement.style.visibility = 'visible';
+                gameOverModalElement.style.opacity = '1';
+            }
+            
+            function resetGame() {
+                score = 0; lives = 3; blocksPlaced = 0;
+                gameGrid = Array(8).fill(null).map(() => Array(8).fill(0));
+                askedQuestionIndices = []; gameIsOver = false; currentQuestionObject = null;
+                scoreElement.textContent = `Score: ${score}`;
+                livesElement.textContent = `Lives: ${lives}`;
+                blocksPlacedElement.textContent = `Blocks Placed: 0/2`;
+                questionsAnsweredElement.textContent = `Questions: 0/${networkingQuestions.length}`;
+                initializeBoard();
+                generateBlocks(); // Generate initial set of blocks
+                checkGameEndConditions(); // Check if initial board state is already game over (highly unlikely but good practice)
+                gameOverModalElement.style.visibility = 'hidden';
+                gameOverModalElement.style.opacity = '0';
+                tutorialOverlayElement.style.display = 'none';
+            }
+            
+            restartBtnElement.addEventListener('click', resetGame);
+            gameOverRestartBtnElement.addEventListener('click', resetGame);
+            startGameBtnElement.addEventListener('click', function() {
+                tutorialOverlayElement.style.display = 'none';
+                resetGame();
+            });
+        });
+    </script>
+</body>
+</html>
