@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BlockBlast: Operating Systems</title>
+    <title>BlockBlast: CPU & Pipelining</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -188,7 +188,7 @@
     </style>
 </head>
 <body>
-    <h1>BlockBlast: Operating Systems</h1>
+    <h1>BlockBlast: CPU & Pipelining</h1>
     
     <div class="game-container">
         <div class="left-panel">
@@ -229,16 +229,16 @@
 
     <div class="tutorial-overlay" id="tutorialOverlay">
         <div class="tutorial-container">
-            <div class="tutorial-title">Welcome to BlockBlast - Operating Systems Edition!</div>
+            <div class="tutorial-title">Welcome to BlockBlast - CPU & Pipelining Edition!</div>
             <div class="tutorial-content">
                 <p><strong>How to play:</strong></p>
                 <ul>
                     <li>Drag the Tetris-like blocks onto the 8x8 grid.</li>
                     <li>Complete a full row or column of 8 cells to clear it and earn points.</li>
-                    <li>After placing 3 blocks, an OS virtual memory question will appear.</li>
+                    <li>After placing 3 blocks, a CPU & Pipelining question will appear.</li>
                     <li>Answer correctly for bonus points. Incorrect answers cost a life.</li>
                     <li>Lose 3 lives, or run out of moves/questions, and the game ends.</li>
-                    <li>The game tracks the number of unique questions answered out of 10.</li>
+                    <li>The game tracks the number of unique questions answered out of 12.</li>
                     <li>Try to get the highest score!</li>
                 </ul>
             </div>
@@ -265,116 +265,138 @@
             
             let availableBlocks = [];
 
-            const virtualMemoryQuestions = [
+            const cpuPipelineQuestions = [
                 {
-                    question: "What is the primary purpose of virtual memory?",
-                    level: "OS Virtual Memory",
+                    question: "What is the main role of the Instruction Fetch (IF) stage in the pipeline?",
+                    level: "CPU & Pipelining",
                     answers: [
-                        "Increase CPU clock speed",
-                        "Prevent buffer overflow",
-                        "Extend RAM by using disk storage",
-                        "Eliminate internal fragmentation"
+                        "Execute operations",
+                        "Fetch instruction from memory",
+                        "Fetch operands",
+                        "Write result back to register"
+                    ],
+                    correctAnswer: 1 // B
+                },
+                {
+                    question: "In which pipeline stage are register operands fetched and the instruction decoded?",
+                    level: "CPU & Pipelining",
+                    answers: [
+                        "IF",
+                        "EX",
+                        "OF",
+                        "MEM"
                     ],
                     correctAnswer: 2 // C
                 },
                 {
-                    question: "What happens when a page fault occurs?",
-                    level: "OS Virtual Memory",
+                    question: "Which pipeline stage performs arithmetic and logic operations?",
+                    level: "CPU & Pipelining",
                     answers: [
-                        "The CPU shuts down",
-                        "The OS retrieves the page from secondary storage",
-                        "The page is deleted from memory",
-                        "The process is permanently terminated"
+                        "IF",
+                        "EX",
+                        "WB",
+                        "MEM"
                     ],
                     correctAnswer: 1 // B
                 },
                 {
-                    question: "Paging divides memory into:",
-                    level: "OS Virtual Memory",
+                    question: "What happens during the Memory (MEM) stage?",
+                    level: "CPU & Pipelining",
                     answers: [
-                        "Variable-sized segments",
-                        "Fixed-sized blocks called pages and frames",
-                        "Large continuous memory blocks",
-                        "Priority-based partitions"
+                        "Data is written to or read from memory",
+                        "Instruction is decoded",
+                        "ALU performs logic",
+                        "PC is incremented"
                     ],
-                    correctAnswer: 1 // B
+                    correctAnswer: 0 // A
                 },
                 {
-                    question: "Which technique allows memory to be divided into logical units like code, data, and stack?",
-                    level: "OS Virtual Memory",
+                    question: "Which stage updates the register file with the result?",
+                    level: "CPU & Pipelining",
                     answers: [
-                        "Paging",
-                        "Virtual memory",
-                        "Segmentation",
-                        "Thrashing"
+                        "IF",
+                        "MEM",
+                        "WB",
+                        "EX"
                     ],
                     correctAnswer: 2 // C
                 },
                 {
-                    question: "What is thrashing in a virtual memory system?",
-                    level: "OS Virtual Memory",
+                    question: "The Instruction Register (IR) holds:",
+                    level: "CPU & Pipelining",
                     answers: [
-                        "Allocating too much memory to a single process",
-                        "Constantly replacing pages, causing performance degradation",
-                        "A crash due to buffer overflow",
-                        "Memory fragmentation"
-                    ],
-                    correctAnswer: 1 // B
-                },
-                {
-                    question: "What does the Translation Lookaside Buffer (TLB) do?",
-                    level: "OS Virtual Memory",
-                    answers: [
-                        "Stores memory pages on disk",
-                        "Speeds up virtual-to-physical address translation",
-                        "Schedules processes",
-                        "Manages memory segmentation"
-                    ],
-                    correctAnswer: 1 // B
-                },
-                {
-                    question: "What is the main idea of the Least Recently Used (LRU) replacement policy?",
-                    level: "OS Virtual Memory",
-                    answers: [
-                        "Replace the page with the smallest size",
-                        "Replace the most frequently accessed page",
-                        "Replace the page not used for the longest time",
-                        "Replace a randomly chosen page"
+                        "The current ALU result",
+                        "The address of the next instruction",
+                        "The instruction being executed",
+                        "Operands fetched from memory"
                     ],
                     correctAnswer: 2 // C
                 },
                 {
-                    question: "Which method loads a page into memory only when it is needed?",
-                    level: "OS Virtual Memory",
+                    question: "What is the main role of the Program Counter (PC)?",
+                    level: "CPU & Pipelining",
                     answers: [
-                        "Segmentation",
-                        "Paging",
-                        "Thrashing",
-                        "Demand Paging"
+                        "Execute ALU operations",
+                        "Store final results",
+                        "Hold the address of the next instruction",
+                        "Store operand data"
+                    ],
+                    correctAnswer: 2 // C
+                },
+                {
+                    question: "The Memory Address Register (MAR) stores:",
+                    level: "CPU & Pipelining",
+                    answers: [
+                        "Data to be written",
+                        "Address of data to access in memory",
+                        "Program instructions",
+                        "ALU results"
+                    ],
+                    correctAnswer: 1 // B
+                },
+                {
+                    question: "The Memory Data Register (MDR) is used to:",
+                    level: "CPU & Pipelining",
+                    answers: [
+                        "Hold the instruction",
+                        "Perform addition",
+                        "Hold data read from or to be written to memory",
+                        "Fetch the next instruction"
+                    ],
+                    correctAnswer: 2 // C
+                },
+                {
+                    question: "Which component temporarily holds the result of the ALU?",
+                    level: "CPU & Pipelining",
+                    answers: [
+                        "IR",
+                        "MDR",
+                        "MAR",
+                        "Accumulator"
                     ],
                     correctAnswer: 3 // D
                 },
                 {
-                    question: "A fetch policy determines:",
-                    level: "OS Virtual Memory",
+                    question: "What is the correct order of data flow for executing an instruction?",
+                    level: "CPU & Pipelining",
                     answers: [
-                        "Which segment to allocate",
-                        "When a page should be loaded into memory",
-                        "The size of virtual memory",
-                        "The address of a page on disk"
-                    ],
-                    correctAnswer: 1 // B
-                },
-                {
-                    question: "What is an address space?",
-                    level: "OS Virtual Memory",
-                    answers: [
-                        "The location of the page table",
-                        "The set of physical addresses available to all processes",
-                        "The range of virtual addresses assigned to a process",
-                        "A memory buffer used to prevent thrashing"
+                        "PC → IR → ALU → MDR → MAR → Accumulator",
+                        "PC → MAR → MDR → IR → ALU → Accumulator",
+                        "PC → IR → MAR → MDR → ALU → Accumulator",
+                        "PC → ALU → MDR → MAR → IR → Accumulator"
                     ],
                     correctAnswer: 2 // C
+                },
+                {
+                    question: "What is the correct sequence of operations in the Control Unit Simulator?",
+                    level: "CPU & Pipelining",
+                    answers: [
+                        "IR → ALU → PC → MAR → MDR → Accumulator",
+                        "PC → Instruction Register → ALU → MDR → MAR → Accumulator",
+                        "Instruction Register → Program Counter → ALU → Memory Address Register → Memory Data Register → Accumulator",
+                        "Program Counter → Instruction Register → ALU → Memory Address Register → Memory Data Register → Accumulator"
+                    ],
+                    correctAnswer: 3 // D
                 }
             ];
 
@@ -563,7 +585,7 @@
                     } else { 
                         checkGameEndConditions();
                     }
-                    if (availableBlocks.length === 0 && virtualMemoryQuestions.length > askedQuestionIndices.length) {
+                    if (availableBlocks.length === 0 && cpuPipelineQuestions.length > askedQuestionIndices.length) {
                         generateBlocks();
                     }
                 } else { 
@@ -656,7 +678,7 @@
                     setTimeout(() => {
                         clearLines(rowsToClear, colsToClear);
                         updateScore((rowsToClear.length + colsToClear.length) * 100);
-                        if (availableBlocks.length === 0 && virtualMemoryQuestions.length > askedQuestionIndices.length) {
+                        if (availableBlocks.length === 0 && cpuPipelineQuestions.length > askedQuestionIndices.length) {
                             generateBlocks();
                         }
                         checkGameEndConditions();
@@ -684,18 +706,18 @@
             
             function showQuestion() {
                 if (gameIsOver) return;
-                if (askedQuestionIndices.length >= virtualMemoryQuestions.length) {
+                if (askedQuestionIndices.length >= cpuPipelineQuestions.length) {
                     checkGameEndConditions(); return;
                 }
                 let questionIndex;
-                do { questionIndex = Math.floor(Math.random() * virtualMemoryQuestions.length); }
+                do { questionIndex = Math.floor(Math.random() * cpuPipelineQuestions.length); }
                 while (askedQuestionIndices.includes(questionIndex));
                 
                 askedQuestionIndices.push(questionIndex);
-                currentQuestionObject = virtualMemoryQuestions[questionIndex];
+                currentQuestionObject = cpuPipelineQuestions[questionIndex];
                 questionTextElement.textContent = currentQuestionObject.question;
                 questionLevelTextElement.textContent = `Level: ${currentQuestionObject.level}`;
-                questionsAnsweredElement.textContent = `Questions: ${askedQuestionIndices.length}/${virtualMemoryQuestions.length}`;
+                questionsAnsweredElement.textContent = `Questions: ${askedQuestionIndices.length}/${cpuPipelineQuestions.length}`;
                 answersContainerElement.innerHTML = '';
                 
                 currentQuestionObject.answers.forEach((answer, index) => {
@@ -728,7 +750,7 @@
                 if (gameIsOver) return;
                 if (lives <= 0) { endGame("No lives left!"); return; }
                 
-                const allQuestionsAnswered = askedQuestionIndices.length >= virtualMemoryQuestions.length;
+                const allQuestionsAnswered = askedQuestionIndices.length >= cpuPipelineQuestions.length;
 
                 if (allQuestionsAnswered) { 
                     if (availableBlocks.length === 0 || !canAnyBlockFromListFit(availableBlocks)) {
@@ -774,7 +796,7 @@
                 scoreElement.textContent = `Score: ${score}`;
                 livesElement.textContent = `Lives: ${lives}`;
                 blocksPlacedElement.textContent = `Blocks Placed: ${blocksPlacedCycle}/3`;
-                questionsAnsweredElement.textContent = `Questions: 0/${virtualMemoryQuestions.length}`;
+                questionsAnsweredElement.textContent = `Questions: 0/${cpuPipelineQuestions.length}`;
                 initializeBoard();
                 generateBlocks(); 
                 checkGameEndConditions(); 
@@ -791,7 +813,7 @@
             });
 
             tutorialOverlayElement.style.display = 'flex';
-            questionsAnsweredElement.textContent = `Questions: 0/${virtualMemoryQuestions.length}`;
+            questionsAnsweredElement.textContent = `Questions: 0/${cpuPipelineQuestions.length}`;
         });
     </script>
 </body>
